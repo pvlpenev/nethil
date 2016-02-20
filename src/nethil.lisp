@@ -27,10 +27,9 @@
 (defun start  (&key (port 8000))
   (clack:clackup
    #'(lambda (env)
-       (let ((*env* env)
-             (*request* (clack.request:make-request env)))
+       (let ((*env* env))
          (multiple-value-bind (route *bindings*)
-             (routes:match *mapper* (clack.request:request-uri *request*))
+             (routes:match *mapper* (getf *env* :request-uri))
            (if route
                (let ((result (funcall (route-handler route))))
                  (if (stringp result)

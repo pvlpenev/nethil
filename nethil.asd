@@ -9,6 +9,7 @@
                #:routes)
   :pathname "src"
   :components ((:file "packages")
+               (:file "module")
                (:file "nethil")))
 
 (asdf:defsystem #:nethil-demo
