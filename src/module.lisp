@@ -5,6 +5,7 @@
 (defvar *servers* nil "List of running servers")
 (defvar *current-server* nil "Current server")
 (defvar *apps* nil "List of defined apps")
+(defvar *app* nil "Current app")
 (defvar *routes* nil "alist of defined routes")
 (defvar *running-apps* nil "List of apps mounted in servers")
 (defvar *env* nil "Current clack environment")
@@ -45,13 +46,18 @@
    (template :initarg :template :reader route-template)
    (handler :initarg :handler :reader route-handler)))
 
-(defmacro define-route (name (app template &key &allow-other-keys) &body body)
+(defmacro define-app (name &body routes)
+  `(progn
+     (let ((*app* (make-instance 'app :name ',name)))
+       (push *app* *apps*)
+       ,@routes)))
+
+(defmacro define-route (name (template &key (app *app*) &allow-other-keys) &body body)
   `(progn
      (defun ,name ()
        ,@body)
      (push (make-instance 'route :app ',app :name ',name :template ,template :handler ',name)
            (app-routes (find-app ',app)))))
-
 
 
 (defun map-app-routes (app map &optional (parent-template nil))
