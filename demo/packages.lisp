@@ -1,5 +1,5 @@
 ;;;; packages.lisp
 
 (defpackage #:nethil-demo
-  (:use #:cl)
+  (:use #:cl #:nethil)
   (:export #:start-demo))
