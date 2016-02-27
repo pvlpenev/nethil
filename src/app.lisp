@@ -4,15 +4,15 @@
 
 (defclass app ()
   ((name :initarg :name :reader app-name)
-   (routes :initform (make-hash-table) :accessor app-routes)
+   (routes :initarg :routes :initform (make-hash-table) :accessor app-routes)
    (template :initarg :template :initarg nil :accessor app-template)
    (children :initform nil :accessor app-children)
-   (parent :initform nil :accessor app-parent)))
+   (parent :initarg :parent :initform nil :accessor app-parent)))
 
 (defun find-app (name)
   (find name *apps* :key #'app-name :test #'eql))
 
-(defun define-app (name)
+(defmacro define-app (name)
   `(pushnew (make-instance 'app :name ',name) *apps*))
 
 (defmacro with-app ((name) &body body)
@@ -20,7 +20,7 @@
      ,@body))
 
 (defun map-app-routes (app map)
-  (loop for route in (app-routes app)
+  (loop for route being the hash-values in (app-routes app)
      do (routes:connect map route))
   (loop for child in (app-children app)
      do (map-app-routes child map)))
@@ -36,19 +36,20 @@
                        mount-template))
          (active-app (make-instance 'app
                                     :parent parent
-                                    :template template
-                                    :routes (loop for route in (app-routes app)
-                                               collect (make-instance 'route
-                                                                      :app app
-                                                                      :name (route-name route)
-                                                                      :handler (route-handler route)
-                                                                      :template (concatenate 'list
-                                                                                             template
-                                                                                             (routes:parse-template (route-template route)))))))
+                                    :template template))
          (mounted-children (loop for child in children
                               collect (mount-app (first child)
                                                  (second child)
                                                  (third child)
                                                  active-app))))
+    (loop for route being the hash-values in (app-routes app) using (hash-key name)
+       do (setf (gethash name (app-routes active-app))
+                (make-instance 'route
+                               :app app
+                               :name (route-name route)
+                               :handler (route-handler route)
+                               :template (concatenate 'list
+                                                      template
+                                                      (routes:parse-template (route-template route))))))
     (setf (app-children active-app) mounted-children)
     active-app))

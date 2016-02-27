@@ -2,16 +2,23 @@
 
 (in-package #:nethil-demo)
 
-(define-app hello
+(define-site demo :hostname "localhost")
+
+(define-app hello)
+(define-app sub)
+
+(with-app (hello)
   (define-route hello ("/")
-    "Hello world")
+      "Hello world")
   (define-route world ("world/")
-    "Works as well"))
+      "Works as well"))
 
-(define-app sub
+(with-app (sub)
   (define-route test ("test/")
-    "submodules work"))
+      "submodules work"))
 
-;; (start (mount-app hello () (sub "sub" nil)))
+;; To run demo(must be in nethil-demo package):
+
+;; (start (compose demo (hello "/" ((sub "sub")))))
 
 ;; now the urls /, world/ and sub/test/ will work.

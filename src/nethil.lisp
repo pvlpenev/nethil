@@ -40,25 +40,25 @@
         :test #'equal))
 
 (defun mount-site-routes (site)
-  (route:reset-mapper (site-route-map site))
+  (routes:reset-mapper (site-route-map site))
   (loop for app in (site-apps site)
        do (map-app-routes app (site-route-map site))))
 
 (defun mount-site-apps (site)
   (setf (site-apps site) nil)
-  (loop for app-spec in apps-spec
+  (loop for app-spec in (site-apps-spec site)
      do (push (apply #'mount-app app-spec) (site-apps site))))
 
-(defun %compose (site &rest apps-spec)
-  (let ((site (find-site site)))
+(defun %compose (site apps-spec)
+  (let ((site (find-site-by-name site)))
     (setf (site-apps-spec site) apps-spec)
     (mount-site-apps site)
-    (mount-site-routes site)))
+    (mount-site-routes site)
+    site))
 
 (defmacro compose (site &body apps-spec)
   `(progn
-     (%compose ',site ,apps-spec)
-     (mount-all-routes)))
+     (%compose ',site ',apps-spec)))
 
 (defun mount-all-routes ()
   (loop for site in *sites*
@@ -66,11 +66,10 @@
      do (mount-site-routes site)))
 
 (defun start (site)
-  (let* ((site (find-site-by-name site))
-         (handler (clack:clackup site
-                                 :hostname (site-hostname site)
-                                 :port (site-port site))))
-    (setf (site-clack-handler site) handler)))
+  (setf (site-clack-handler site)
+        (clack:clackup site
+                       :hostname (site-hostname site)
+                       :port (site-port site))))
 
 (defun stop (site)
   (clack:stop (site-clack-handler (find-site-by-name site))))

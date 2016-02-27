@@ -8,14 +8,15 @@
    (template :initarg :template :accessor route-template)
    (handler :initarg :handler :reader route-handler)))
 
-(defmacro define-route (name &optional (app nil) (template &key (app *app*) &allow-other-keys) &body body)
+(defmacro define-route (name (template &key (app nil) &allow-other-keys) &body body)
   (let ((letapp (gensym)))
    `(let ((,letapp (or ,app *app*)))
       (defun ,name ()
         ,@body)
       (setf (gethash ',name (app-routes ,letapp))
             (make-instance 'route :app ,letapp :name ',name :template ,template :handler ',name))
-      (mount-all-routes))))
+      ;(mount-all-routes)
+      )))
 
 (defun find-route (name app)
   (gethash name (app-routes app)))
