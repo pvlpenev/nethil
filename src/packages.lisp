@@ -2,14 +2,32 @@
 
 (defpackage #:nethil
   (:use #:cl)
-  (:export #:define-route
-           #:define-app
-           #:map-all-routes
-           #:mount-app
-           #:find-app
+  (:export #:site
+           #:define-site
+           #:find-site-by-name
+           #:find-site
+           #:mount-site-routes
+           #:mount-site-apps
+           #:mount-all-routes
+           #:compose
            #:start
+           #:stop
            #:stop-all
-           #:*request*
+           
+           ;; globals
+           #:*site*
+           #:*app*
            #:*env*
-           #:*bindings*))
-
+           #:*bindings*
+           
+           ;; app
+           #:app
+           #:find-app
+           #:define-app
+           #:with-app
+           #:mount-app
+           
+           ;; routes
+           #:route
+           #:define-route
+           #:find-route))
