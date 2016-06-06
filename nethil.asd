@@ -10,11 +10,7 @@
                #:clack
                #:routes)
   :pathname "src"
-  :components ((:file "packages")
-               (:file "globals")
-               (:file "app")
-               (:file "routes")
-               (:file "nethil")))
+  :components ((:file "core")))
 
 (asdf:defsystem #:nethil-demo
   :serial t 
