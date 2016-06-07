@@ -7,6 +7,7 @@
   :license "MIT"
   :version "0.2"
   :depends-on (#:alexandria
+               #:lack-request
                #:clack
                #:routes)
   :pathname "src"
