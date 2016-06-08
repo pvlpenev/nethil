@@ -30,7 +30,9 @@
    #:route-handler
    #:route-method
    #:route-conditions
-   #:process-route))
+   #:process-route
+   #:make-route
+   #:add-routes))
 
 (cl:in-package :nethil.core)
 
@@ -129,11 +131,36 @@
     (apply (route-handler route)
            (alexandria:alist-plist bindings))))
 
-;; (routes:connect (site-route-map (find-site 'mysite))
-;;                 (make-instance 'route
-;;                                :name 'foo
-;;                                :method :get
-;;                                :template (routes:parse-template "/hello/:name")
-;;                                :handler #'(lambda (&key name)
-;;                                             (format nil "Hello ~a" name))))
+(defun make-route (name template method handler &optional (conditions nil))
+  (make-instance 'route
+                 :name name
+                 :template (routes:parse-template template)
+                 :method method
+                 :handler handler
+                 :conditions conditions))
 
+(defgeneric add-routes (site urls))
+
+(defmethod add-routes ((site symbol) urls)
+  (add-routes (find-site site) urls))
+
+(defmethod add-routes ((site site) urls)
+  (mapcar #'(lambda (url)
+              (routes:connect (site-route-map site)
+                              (apply #'make-route url)))
+          urls))
+
+
+;; (defun index ()
+;;   "This is the inxed")
+
+;; (defun hello (&key name)
+;;   (format nil "Hello ~A" name))
+
+;; (defparameter *urls*
+;;   '((index "/" :get index)
+;;     (hello "/hello/:name" :get hello)))
+
+;; (add-routes 'mysite *urls*)
+
+;; (start 'mysite)
