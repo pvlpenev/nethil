@@ -65,7 +65,7 @@
           (let* ((result (process-route route *bindings*)))
             (if (stringp result)
                 (list 200 (list "text/html") (list result))
-                result))
+                result)) ;; assume route handlers return either a string or valid LACK response.
           '(404 (:content-type "text/plain") ("Not Found"))))))
 
 (defmacro define-site (name &key (hostname "localhost") (port 8080))
@@ -124,7 +124,9 @@
              (every #'funcall conditions)
              t))))
 
-(defgeneric process-route (route bindings))
+(defgeneric process-route (route bindings)
+  (:documentation "Process route after it has been matched to a URI, apply handler to bindings.
+The route instance is bound to *ROUTE* variable during processing"))
 
 (defmethod process-route ((route route) bindings)
   (let ((*route* route))
@@ -132,6 +134,14 @@
            (alexandria:alist-plist bindings))))
 
 (defun make-route (name template method handler &optional (conditions nil))
+  "Make an instance of ROUTE. The function takes the following parameters:
+NAME: symbol, names the route
+TEMPLATE: string, any route template accepted by cl-routes
+METHOD: keyword, HTTP method matched by the route
+HANDLER: symbol or function, function handling the request.
+         Must take the same keyword arguments as defined in TEMPLATE
+&optional CONDITIONS: list, a list of functions to be called while matching route,
+                      if any return NIL, route will not match"
   (make-instance 'route
                  :name name
                  :template (routes:parse-template template)
@@ -139,28 +149,22 @@
                  :handler handler
                  :conditions conditions))
 
-(defgeneric add-routes (site urls))
+(defgeneric add-routes (site route-specs)
+  (:documentation "Add routes to SITE. Takes the fowolling parameters:
+SITE: symbol or site: The site object
+ROUTE-SPECS: list, list of route specs, same as arguments to MAKE-ROUTE
 
-(defmethod add-routes ((site symbol) urls)
-  (add-routes (find-site site) urls))
+Example:
+(add-routes 'mysite
+            '((index \"/\" :get index)
+              (hello \"/hello/:name\" :get hello)))
+Note the function hello must have the following LAMBDA-LIST: (&key hello) or (&key &allow-other-keys)"))
 
-(defmethod add-routes ((site site) urls)
-  (mapcar #'(lambda (url)
+(defmethod add-routes ((site symbol) route-specs)
+  (add-routes (find-site site) route-specs))
+
+(defmethod add-routes ((site site) route-specs)
+  (mapcar #'(lambda (route-spec)
               (routes:connect (site-route-map site)
-                              (apply #'make-route url)))
-          urls))
-
-
-;; (defun index ()
-;;   "This is the inxed")
-
-;; (defun hello (&key name)
-;;   (format nil "Hello ~A" name))
-
-;; (defparameter *urls*
-;;   '((index "/" :get index)
-;;     (hello "/hello/:name" :get hello)))
-
-;; (add-routes 'mysite *urls*)
-
-;; (start 'mysite)
+                              (apply #'make-route route-spec)))
+          route-specs))
