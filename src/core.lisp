@@ -41,6 +41,8 @@
 (defvar *sites* (make-hash-table) "List of active sites")
 (defvar *site* nil "Current active site")
 
+(defvar *routes* nil "Registered routes") ;; For debug
+
 (defvar *route* nil "Current route")
 (defvar *request* nil "current request")
 (defvar *env* nil "Current clack environment")
@@ -96,7 +98,7 @@
   (:documentation "Stop a server instance of SITE"))
 
 (defmethod stop ((name symbol))
-  (stop (find-symbol name)))
+  (stop (find-site name)))
 
 (defmethod stop ((site site))
   (clack:stop (site-clack-handler site)))
@@ -112,6 +114,7 @@
   ((name :initarg :name :reader route-name)
    (method :initarg :method :reader route-method)
    (conditions :initarg :conditions :initform nil :reader route-conditions)
+   (additional-parameters :initarg :additional-parameters :initform nil :reader route-additional-parameters)
    (handler :initarg :handler :reader route-handler))
   (:documentation "Routes define a mapping from a URL template to a controller"))
 
@@ -131,9 +134,11 @@ The route instance is bound to *ROUTE* variable during processing"))
 (defmethod process-route ((route route) bindings)
   (let ((*route* route))
     (apply (route-handler route)
-           (alexandria:alist-plist bindings))))
+           (concatenate 'list 
+                        (alexandria:alist-plist bindings)
+                        (route-additional-parameters route)))))
 
-(defun make-route (name template method handler &optional (conditions nil))
+(defun route (name template handler &key (method :get) (conditions nil) (additional-parameters nil) &allow-other-keys)
   "Make an instance of ROUTE. The function takes the following parameters:
 NAME: symbol, names the route
 TEMPLATE: string, any route template accepted by cl-routes
@@ -146,13 +151,31 @@ HANDLER: symbol or function, function handling the request.
                  :name name
                  :template (routes:parse-template template)
                  :method method
+                 :additional-parameters additional-parameters
                  :handler handler
                  :conditions conditions))
+
+(defun include (routes &key (name-prefix nil) (template nil))
+  "Add a prefix to route template and route name to routes."
+  (loop for route in routes
+     collect (destructuring-bind (route-name route-template route-handler &key (method nil) (conditions nil) (additional-parameters nil))
+                 route
+               (route (intern (concatenate 'string
+                                           (symbol-name name-prefix)
+                                           (symbol-name route-name))
+                              (symbol-package name-prefix)) ;; Make a new name for the route for reverse lookup. 
+                      (concatenate 'string
+                                   template
+                                   route-template)
+                      route-handler
+                      :method method
+                      :conditions conditions
+                      :additional-parameters additional-parameters))))
 
 (defgeneric add-routes (site route-specs)
   (:documentation "Add routes to SITE. Takes the fowolling parameters:
 SITE: symbol or site: The site object
-ROUTE-SPECS: list, list of route specs, same as arguments to MAKE-ROUTE
+ROUTE-SPECS: list, list of route specs, same as arguments to MAKE-ROUTE, ROUTE-SPECS can also be nested, ADD-ROUTES will recurse down in that case.
 
 Example:
 (add-routes 'mysite
@@ -164,7 +187,15 @@ Note the function hello must have the following LAMBDA-LIST: (&key hello) or (&k
   (add-routes (find-site site) route-specs))
 
 (defmethod add-routes ((site site) route-specs)
+  (setf *routes* nil)
+  (routes:reset-mapper (site-route-map site))
   (mapcar #'(lambda (route-spec)
-              (routes:connect (site-route-map site)
-                              (apply #'make-route route-spec)))
+              (if (equal :include (first route-spec)) ;; route-spec is of form (:include *urls1* :name-prefix foo :template "/foo")
+                  (mapcar #'(lambda (route)
+                              (push route *routes*)
+                              (routes:connect (site-route-map site)
+                                              route))
+                          (apply 'include (symbol-value (second route-spec)) (cddr route-spec)))
+                  (routes:connect (site-route-map site)
+                                  (first (push (apply #'route route-spec) *routes*)))))
           route-specs))
