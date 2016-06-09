@@ -7,11 +7,13 @@
   :license "MIT"
   :version "0.2"
   :depends-on (#:alexandria
+               #:cl-project
                #:lack-request
                #:clack
                #:routes)
   :pathname "src"
-  :components ((:file "core")))
+  :components ((:file "core")
+               (:file "project")))
 
 (asdf:defsystem #:nethil-demo
   :serial t 
